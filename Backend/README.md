@@ -6,9 +6,7 @@ Description: Creates a new user account, returns a JWT token and the created use
 ## Request
 
 - Headers:
-
   - Content-Type: application/json
-
 - Body (JSON):
   - fullname: object
     - firstname (string) — required, minimum 3 characters
@@ -64,18 +62,6 @@ Example request body:
 
   - When validation fails. Response shape:
 
-  ```json
-  {
-    "errors": [
-      {
-        "msg": "Invalid email address",
-        "param": "email",
-        "location": "body"
-      }
-    ]
-  }
-  ```
-
 - 409 Conflict (recommended)
 
   - If the email already exists (unique constraint). Your current controller does not explicitly handle this; typical behaviour is a database duplicate key error. Consider updating controller to return 409 for duplicate email.
@@ -83,20 +69,24 @@ Example request body:
 - 500 Internal Server Error
   - For unhandled server/database errors.
 
-## Notes
+# User Login Endpoint
 
-- Password is hashed before saving; the JWT secret is determined by `process.env.JWT_SECRET`.
-- `fullname.lastname` is optional.
-- Add try/catch in controller to map database errors (like duplicate email) to proper 4xx responses for better UX.
+- Endpoint: POST /users/login
+- Description: Authenticates an existing user. Returns a JWT token and the authenticated user object.
 
-## Example cURL
+### Request
 
-```bash
-curl -X POST http://localhost:3000/user/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fullname": {"firstname":"Alice","lastname":"Smith"},
-    "email":"alice@example.com",
-    "password":"supersecret"
-  }'
+- Headers:
+  - Content-Type: application/json
+- Body (JSON):
+  - email (string) — required, must be a valid email
+  - password (string) — required, minimum 6 characters
+
+Example request body:
+
+```json
+{
+  "email": "alice@example.com",
+  "password": "supersecret"
+}
 ```
