@@ -90,3 +90,40 @@ Example request body:
   "password": "supersecret"
 }
 ```
+
+# User API (Auth)
+
+Concise, professional documentation for the user registration and login endpoints.
+
+## Base routes
+
+- Register: POST /user/register (router base may be `/user` or `/users` depending on mount)
+- Login: POST /user/login
+
+Adjust prefix if your router is mounted under `/users` instead of `/user`.
+
+---
+
+## 1) Register — POST /user/register
+
+Description: Create a new user. Returns a JSON web token and the created user (password excluded).
+
+Request:
+
+- Headers: Content-Type: application/json
+- Body JSON:
+  - fullname: object
+    - firstname (string) — required, min 3 chars
+    - lastname (string) — optional, min 3 chars if provided
+  - email (string) — required, valid email
+  - password (string) — required, min 6 chars
+
+Example:
+
+```json
+{
+  "fullname": { "firstname": "Alice", "lastname": "Smith" },
+  "email": "alice@example.com",
+  "password": "supersecret"
+}
+```
