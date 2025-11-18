@@ -1,129 +1,134 @@
-# User Registration Endpoint
-
-Endpoint: POST /user/register  
-Description: Creates a new user account, returns a JWT token and the created user (without password).
-
-## Request
-
-- Headers:
-  - Content-Type: application/json
-- Body (JSON):
-  - fullname: object
-    - firstname (string) — required, minimum 3 characters
-    - lastname (string) — optional, minimum 3 characters if provided
-  - email (string) — required, must be a valid email
-  - password (string) — required, minimum 6 characters
-
-Example request body:
-
-```json
-{
-  "fullname": {
-    "firstname": "Alice",
-    "lastname": "Smith"
-  },
-  "email": "alice@example.com",
-  "password": "supersecret"
-}
-```
-
-## Validation rules
-
-- `email` must be a valid email (express-validator)
-- `fullname.firstname` minimum length 3 (express-validator and schema)
-- `password` minimum length 6 (express-validator)
-- Model also enforces `email` uniqueness and `password` is required
-
-## Responses / Status codes
-
-- 201 Created
-
-  - Body: JSON with `token` (JWT) and `user` object (created user, password not returned)
-  - Example:
-
-  ```json
-  {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "_id": "6428b06e1a7b2c3d4e5f6a7b",
-      "fullname": {
-        "firstname": "Alice",
-        "lastname": "Smith"
-      },
-      "email": "alice@example.com",
-      "socketId": null,
-      "createdAt": "2025-11-15T00:00:00.000Z",
-      "updatedAt": "2025-11-15T00:00:00.000Z"
-    }
-  }
-  ```
-
-- 400 Bad Request
-
-  - When validation fails. Response shape:
-
-- 409 Conflict (recommended)
-
-  - If the email already exists (unique constraint). Your current controller does not explicitly handle this; typical behaviour is a database duplicate key error. Consider updating controller to return 409 for duplicate email.
-
-- 500 Internal Server Error
-  - For unhandled server/database errors.
-
-# User Login Endpoint
-
-- Endpoint: POST /users/login
-- Description: Authenticates an existing user. Returns a JWT token and the authenticated user object.
-
-### Request
-
-- Headers:
-  - Content-Type: application/json
-- Body (JSON):
-  - email (string) — required, must be a valid email
-  - password (string) — required, minimum 6 characters
-
-Example request body:
-
-```json
-{
-  "email": "alice@example.com",
-  "password": "supersecret"
-}
-```
-
-# User API (Auth)
-
-Concise, professional documentation for the user registration and login endpoints.
-
-## Base routes
-
-- Register: POST /user/register (router base may be `/user` or `/users` depending on mount)
-- Login: POST /user/login
-
-Adjust prefix if your router is mounted under `/users` instead of `/user`.
-
----
-
 ## 1) Register — POST /user/register
 
-Description: Create a new user. Returns a JSON web token and the created user (password excluded).
+Description: Create a new user. Returns a JWT and the created user (password excluded).
 
-Request:
+Request
 
 - Headers: Content-Type: application/json
-- Body JSON:
+- Body:
   - fullname: object
     - firstname (string) — required, min 3 chars
     - lastname (string) — optional, min 3 chars if provided
   - email (string) — required, valid email
   - password (string) — required, min 6 chars
 
-Example:
+Responses
+
+- 201 Created — { token, user }
+- 400 Bad Request — validation errors
+- 409 Conflict — duplicate email
+- 500 Internal Server Error
+
+Notes
+
+- Password is hashed before save (user.model.hashPassword).
+- JWT created with process.env.JWT_SECRET.
+
+---
+
+## 2) Login — POST /user/login
+
+Description: Authenticate user; returns JWT and user object.
+
+Request
+
+- Headers: Content-Type: application/json
+- Body:
+  - email (string) — required
+  - password (string) — required
+
+Responses
+
+- 200 OK — { token, user } (cookie `token` is set)
+- 400 Bad Request — validation errors
+- 401 Unauthorized — invalid credentials
+- 500 Internal Server Error
+
+Notes
+
+- Controller selects `+password` to verify then clears the password before responding.
+
+---
+
+## 3) Profile — GET /user/profile
+
+Description: Get authenticated user's profile.
+
+Request
+
+- Headers:
+  - Cookie: token=<jwt> OR
+  - Authorization: Bearer <token>
+
+Behavior
+
+- Uses auth middleware to verify JWT and attach user to `req.user`.
+- If token is absent/invalid, returns 401 or 400.
+
+Responses
+
+- 200 OK — { user }
+  - user is the authenticated user object (password omitted)
+- 401 Unauthorized — missing token or blacklisted token
+- 400 Bad Request — invalid token
+- 500 Internal Server Error
+
+Example cURL (using Authorization header)
+
+```bash
+curl -X GET http://localhost:3000/user/profile \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+## 4) Logout — GET /user/logout
+
+Description: Clear client token cookie and blacklist the token server-side.
+
+Request
+
+- Headers:
+  - Cookie: token=<jwt> OR
+  - Authorization: Bearer <token>
+
+Behavior
+
+- Clears `token` cookie.
+- Adds the token to blacklistToken model to prevent reuse.
+- Requires a valid token; otherwise returns 401.
+
+Responses
+
+- 200 OK — { message: "Logged out successfully" }
+- 401 Unauthorized — missing or revoked token
+- 500 Internal Server Error
+
+Example cURL (cookie)
+
+```bash
+curl -X GET http://localhost:3000/user/logout \
+  -H "Cookie: token=<token>"
+```
+
+---
+
+## Error response format (validation)
+
+400 example:
 
 ```json
 {
-  "fullname": { "firstname": "Alice", "lastname": "Smith" },
-  "email": "alice@example.com",
-  "password": "supersecret"
+  "errors": [
+    { "msg": "Invalid email address", "param": "email", "location": "body" }
+  ]
 }
 ```
+
+---
+
+Notes
+
+- The router validates request input using express-validator in Backend/routes/user.routes.js.
+- You can use cookies or Authorization header for auth; logout blacklists token for server-side revocation.
+- Consider mapping duplicate key errors to 409 Conflict for better UX.
