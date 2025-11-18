@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const { body } = require("express-validator");
-const useController = require("../controllers/user.controller");
+const userController = require("../controllers/user.controller");
+const authMiddleware = require("../middlewares/auth.middleware");
 
 // User registration route with validation
 
@@ -16,7 +17,7 @@ router.post(
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters long"),
   ],
-  useController.registerUser
+  userController.registerUser
 );
 
 router.post(
@@ -25,7 +26,10 @@ router.post(
   body("password")
     .isLength({ min: 6 })
     .withMessage("Password must be at least 6 characters long"),
-  useController.loginUser
+  userController.loginUser
 );
+
+router.get("/profile", authMiddleware.authUser, userController.getUserProfile);
+router.get("/logout", authMiddleware.authUser, userController.logoutUser);
 
 module.exports = router;
