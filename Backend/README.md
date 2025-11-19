@@ -127,7 +127,7 @@ curl -X GET http://localhost:3000/user/logout \
 
 ---
 
-Notes
+In Short Details
 
 - The router validates request input using express-validator in Backend/routes/user.routes.js.
 - You can use cookies or Authorization header for auth; logout blacklists token for server-side revocation.
